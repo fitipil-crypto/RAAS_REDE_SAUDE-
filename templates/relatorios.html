@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+{% block title %}Relatórios — RAAS-CAPS{% endblock %}
+{% block page_title %}Relatórios{% endblock %}
+
+{% block content %}
+<div class="reports-page">
+<div class="page-header">
+    <div>
+        <h1>📈 Relatórios</h1>
+        <p>Indicadores e estatísticas do sistema</p>
+    </div>
+    <form method="get" action="/relatorios" style="display:flex; gap:10px; align-items:center;">
+        <input type="month" name="month" value="{{ data.filter_month or '' }}" class="search-input" style="width:auto; padding:8px 12px;" onchange="this.form.submit()">
+        {% if data.filter_month %}
+        <a href="/relatorios" class="btn btn-outline btn-sm">Limpar filtro</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon">🩺</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.total_atendimentos }}</div>
+            <div class="stat-label">Atendimentos{% if data.filter_month %} no período{% endif %}</div>
+        </div>
+    </div>
+    <div class="stat-card stat-secondary">
+        <div class="stat-icon">👥</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.pacientes_ativos }}</div>
+            <div class="stat-label">Pacientes Ativos</div>
+        </div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-icon">🆕</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.novos_pacientes }}</div>
+            <div class="stat-label">Novos Pacientes</div>
+        </div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon">📊</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.avg_per_patient }}</div>
+            <div class="stat-label">Média Atend./Paciente</div>
+        </div>
+    </div>
+    <div class="stat-card stat-primary">
+        <div class="stat-icon">👤</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.stats.total_pacientes }}</div>
+            <div class="stat-label">Total Cadastrados</div>
+        </div>
+    </div>
+    <div class="stat-card stat-secondary">
+        <div class="stat-icon">👨‍⚕️</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.stats.total_profissionais }}</div>
+            <div class="stat-label">Profissionais Ativos</div>
+        </div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-icon">📋</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.stats.total_procedimentos }}</div>
+            <div class="stat-label">Procedimentos Ativos</div>
+        </div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon">📝</div>
+        <div class="stat-body">
+            <div class="stat-value">{{ data.stats.total_registros }}</div>
+            <div class="stat-label">Total Registros</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span>📅 Atendimentos por Mês (últimos 6)</span></div>
+    <div class="card-body">
+        {% set max_monthly = data.monthly | map(attribute='count') | max %}
+        {% set max_val = max_monthly if max_monthly and max_monthly > 0 else 1 %}
+        <div class="chart-container">
+            {% for m in data.monthly %}
+            <div class="chart-bar-wrapper">
+                <div class="chart-bar" style="height: {{ (m.count / max_val * 160) + 4 }}px;" title="{{ m.month }}: {{ m.count }}"></div>
+                <div class="chart-label">{{ m.month[5:] }}</div>
+                <div class="chart-value">{{ m.count }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>📊 Comparativo Mês a Mês (12 meses)</span>
+        <button class="btn btn-outline btn-sm" onclick="toggleChartView()" id="toggleChartBtn" style="padding:4px 12px;font-size:12px;">Ver gráfico</button>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <!-- Tabela comparativa -->
+        <div id="tableView">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="white-space:nowrap;">Mês</th>
+                            <th style="text-align:right;">Atendimentos</th>
+                            <th style="text-align:right;">Var.</th>
+                            <th style="text-align:right;">Pac. Ativos</th>
+                            <th style="text-align:right;">Var.</th>
+                            <th style="text-align:right;">Novos Pac.</th>
+                            <th style="text-align:right;">Proced.</th>
+                            <th style="text-align:right;">Profis.</th>
+                            <th style="text-align:right;">Média/Pac.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in comparativo %}
+                        <tr>
+                            <td style="font-weight:600;white-space:nowrap;">{{ row.label }}</td>
+                            <td style="text-align:right;font-weight:600;">{{ row.atendimentos }}</td>
+                            <td style="text-align:right;">
+                                {% if row.var_atendimentos is not none %}
+                                {% if row.var_atendimentos > 0 %}
+                                <span style="color:var(--secondary);font-weight:600;">▲ {{ row.var_atendimentos }}%</span>
+                                {% elif row.var_atendimentos < 0 %}
+                                <span style="color:var(--danger);font-weight:600;">▼ {{ row.var_atendimentos|abs }}%</span>
+                                {% else %}
+                                <span style="color:var(--muted);">—</span>
+                                {% endif %}
+                                {% else %}
+                                <span style="color:var(--muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:right;">{{ row.pacientes_ativos }}</td>
+                            <td style="text-align:right;">
+                                {% if row.var_pacientes is not none %}
+                                {% if row.var_pacientes > 0 %}
+                                <span style="color:var(--secondary);font-weight:600;">▲ {{ row.var_pacientes }}%</span>
+                                {% elif row.var_pacientes < 0 %}
+                                <span style="color:var(--danger);font-weight:600;">▼ {{ row.var_pacientes|abs }}%</span>
+                                {% else %}
+                                <span style="color:var(--muted);">—</span>
+                                {% endif %}
+                                {% else %}
+                                <span style="color:var(--muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:right;">{{ row.novos_pacientes }}</td>
+                            <td style="text-align:right;">{{ row.procedimentos_distintos }}</td>
+                            <td style="text-align:right;">{{ row.profissionais_ativos }}</td>
+                            <td style="text-align:right;">{{ row.media_por_paciente }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráfico comparativo (toggle) -->
+        <div id="chartView" style="display:none;padding:20px;">
+            <div class="mini-chart">
+                <h3>Atendimentos por Mês</h3>
+                {% set max_atend = comparativo | map(attribute='atendimentos') | max %}
+                {% set max_a = max_atend if max_atend and max_atend > 0 else 1 %}
+                <div class="chart-container" style="height:225px;">
+                    {% for row in comparativo %}
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: {{ (row.atendimentos / max_a * 140) + 4 }}px;" title="{{ row.label }}: {{ row.atendimentos }}"></div>
+                        <div class="chart-label">{{ row.label }}</div>
+                        <div class="chart-value">{{ row.atendimentos }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h3>Pacientes Ativos por Mês</h3>
+                {% set max_pac = comparativo | map(attribute='pacientes_ativos') | max %}
+                {% set max_p = max_pac if max_pac and max_pac > 0 else 1 %}
+                <div class="chart-container" style="height:225px;">
+                    {% for row in comparativo %}
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: {{ (row.pacientes_ativos / max_p * 140) + 4 }}px; background:var(--secondary);" title="{{ row.label }}: {{ row.pacientes_ativos }}"></div>
+                        <div class="chart-label">{{ row.label }}</div>
+                        <div class="chart-value">{{ row.pacientes_ativos }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h3>Novos Pacientes por Mês</h3>
+                {% set max_novos = comparativo | map(attribute='novos_pacientes') | max %}
+                {% set max_n = max_novos if max_novos and max_novos > 0 else 1 %}
+                <div class="chart-container" style="height:185px;">
+                    {% for row in comparativo %}
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: {{ (row.novos_pacientes / max_n * 100) + 4 }}px; background:var(--accent);" title="{{ row.label }}: {{ row.novos_pacientes }}"></div>
+                        <div class="chart-label">{{ row.label }}</div>
+                        <div class="chart-value">{{ row.novos_pacientes }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="mini-chart">
+                <h3>Média de Atendimentos por Paciente</h3>
+                {% set max_media = comparativo | map(attribute='media_por_paciente') | max %}
+                {% set max_m = max_media if max_media and max_media > 0 else 1 %}
+                <div class="chart-container" style="height:185px;">
+                    {% for row in comparativo %}
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: {{ (row.media_por_paciente / max_m * 100) + 4 }}px; background:var(--warning);" title="{{ row.label }}: {{ row.media_por_paciente }}"></div>
+                        <div class="chart-label">{{ row.label }}</div>
+                        <div class="chart-value">{{ row.media_por_paciente }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span>📆 Atendimentos por Dia da Semana</span></div>
+    <div class="card-body">
+        {% set max_weekday = data.weekday_distribution | map(attribute='count') | max %}
+        {% set max_wd = max_weekday if max_weekday and max_weekday > 0 else 1 %}
+        <div class="chart-container">
+            {% for w in data.weekday_distribution %}
+            <div class="chart-bar-wrapper">
+                <div class="chart-bar" style="height: {{ (w.count / max_wd * 160) + 4 }}px; background: var(--secondary);" title="{{ w.day }}: {{ w.count }}"></div>
+                <div class="chart-label">{{ w.day }}</div>
+                <div class="chart-value">{{ w.count }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="reports-two-col">
+    <div class="card">
+        <div class="card-header"><span>👥 Distribuição por Gênero</span></div>
+        <div class="card-body">
+            {% if data.gender_distribution %}
+            {% set gender_total = data.gender_distribution.values() | sum %}
+            {% for label, count in data.gender_distribution.items() %}
+            <div class="meter-row">
+                <div class="meter-labels">
+                    <span>{{ label }}</span>
+                    <span class="meter-value">{{ count }} ({{ (count / gender_total * 100) | round(1) }}%)</span>
+                </div>
+                <div class="meter-track">
+                    <div class="meter-fill" style="width:{{ count / gender_total * 100 }}%; background:{% if label == 'Masculino' %}var(--primary){% elif label == 'Feminino' %}var(--secondary){% else %}var(--muted){% endif %};"></div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span>🎂 Faixas Etárias</span></div>
+        <div class="card-body">
+            {% if data.age_groups %}
+            {% set age_total = data.age_groups.values() | sum %}
+            {% set age_order = ["0-17 anos", "18-29 anos", "30-44 anos", "45-59 anos", "60+ anos", "Não informado"] %}
+            {% for group in age_order %}
+            {% if data.age_groups.get(group) %}
+            <div class="meter-row">
+                <div class="meter-labels">
+                    <span>{{ group }}</span>
+                    <span class="meter-value">{{ data.age_groups[group] }}</span>
+                </div>
+                <div class="meter-track">
+                    <div class="meter-fill" style="width:{{ data.age_groups[group] / age_total * 100 }}%; background:var(--accent);"></div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="reports-two-col">
+    <div class="card">
+        <div class="card-header"><span>🏥 Tipos de Atendimento</span></div>
+        <div class="card-body">
+            {% set st_total = data.service_type_distribution.values() | sum %}
+            {% if st_total > 0 %}
+            {% for label, count in data.service_type_distribution.items() %}
+            <div class="meter-row">
+                <div class="meter-labels">
+                    <span>{{ label }}</span>
+                    <span class="meter-value">{{ count }} ({{ (count / st_total * 100) | round(1) }}%)</span>
+                </div>
+                <div class="meter-track">
+                    <div class="meter-fill" style="width:{{ count / st_total * 100 }}%; background:{% if label == 'Individual' %}var(--primary){% else %}var(--secondary){% endif %};"></div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span>📍 Local de Realização</span></div>
+        <div class="card-body">
+            {% if data.local_distribution %}
+            {% set loc_total = data.local_distribution.values() | sum %}
+            {% for label, count in data.local_distribution.items() %}
+            <div class="meter-row">
+                <div class="meter-labels">
+                    <span>{{ label }}</span>
+                    <span class="meter-value">{{ count }} ({{ (count / loc_total * 100) | round(1) }}%)</span>
+                </div>
+                <div class="meter-track">
+                    <div class="meter-fill" style="width:{{ count / loc_total * 100 }}%; background:{% if label == 'CAPS' %}var(--primary){% else %}var(--secondary){% endif %};"></div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span>🩺 Top 10 CIDs Principais</span></div>
+    <div class="card-body">
+        {% if data.top_cids %}
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>#</th><th>CID</th><th>Pacientes</th><th>%</th></tr></thead>
+                <tbody>
+                    {% set cid_total = data.top_cids | map(attribute=1) | sum %}
+                    {% for cid, count in data.top_cids %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="cell-mono">{{ cid }}</td>
+                        <td>{{ count }}</td>
+                        <td>{{ (count / cid_total * 100) | round(1) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-note">Nenhum dado disponível.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="reports-two-col">
+    <div class="card">
+        <div class="card-header"><span>🏆 Top 10 Profissionais</span></div>
+        <div class="card-body">
+            {% if data.top_profissionais %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Profissional</th><th>Atendimentos</th></tr></thead>
+                    <tbody>
+                        {% for name, count in data.top_profissionais %}
+                        <tr><td>{{ loop.index }}</td><td>{{ name }}</td><td>{{ count }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span>📋 Top 10 Procedimentos</span></div>
+        <div class="card-body">
+            {% if data.top_procedimentos %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Procedimento</th><th style="text-align:right;">Atendimentos</th></tr></thead>
+                    <tbody>
+                        {% for name, count in data.top_procedimentos %}
+                        <tr>
+                            <td style="width:48px;font-weight:600;">{{ loop.index }}</td>
+                            <td>
+                                <div class="proc-name-cell">{{ name }}</div>
+                            </td>
+                            <td style="text-align:right;font-weight:700;" class="cell-mono">{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-note">Nenhum dado disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span>👨‍⚕️ Individual x Grupo por Profissional</span></div>
+    <div class="card-body">
+        {% if data.prof_service_stats %}
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Profissional</th>
+                        <th style="text-align:right;">Individual</th>
+                        <th style="text-align:right;">Grupo</th>
+                        <th style="text-align:right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data.prof_service_stats %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td style="text-align:right;">{{ row.individual }}</td>
+                        <td style="text-align:right;">{{ row.grupo }}</td>
+                        <td style="text-align:right;font-weight:600;">{{ row.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-note">Nenhum profissional cadastrado.</p>
+        {% endif %}
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleChartView() {
+    const tv = document.getElementById('tableView');
+    const cv = document.getElementById('chartView');
+    const btn = document.getElementById('toggleChartBtn');
+    if (cv.style.display === 'none') {
+        cv.style.display = 'block';
+        tv.style.display = 'none';
+        btn.textContent = 'Ver tabela';
+    } else {
+        cv.style.display = 'none';
+        tv.style.display = 'block';
+        btn.textContent = 'Ver gráfico';
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Relatórios — visual mais compacto e clean. Tudo escopado em .reports-page
+   para não afetar .stat-card/.card/.data-table usados em outras telas. */
+.reports-page .page-header { margin-bottom: 16px; }
+
+.reports-page .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.reports-page .stat-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    border-top: none;
+    box-shadow: none;
+}
+.reports-page .stat-primary { border-left: 3px solid var(--primary); }
+.reports-page .stat-secondary { border-left: 3px solid var(--secondary); }
+.reports-page .stat-accent { border-left: 3px solid var(--accent); }
+.reports-page .stat-warning { border-left: 3px solid var(--warning); }
+.reports-page .stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--muted-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+.reports-page .stat-body { min-width: 0; }
+.reports-page .stat-value { font-size: 19px; line-height: 1.2; }
+.reports-page .stat-label { font-size: 11px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.reports-page .card { border-radius: 10px; margin-bottom: 14px; }
+.reports-page .card-header { padding: 12px 16px; font-size: 13.5px; }
+.reports-page .card-body { padding: 16px; }
+.reports-page .data-table th { padding: 8px 14px; }
+.reports-page .data-table td { padding: 8px 14px; font-size: 13px; }
+.reports-page .proc-name-cell {
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+.reports-page .empty-note { color: var(--muted); text-align: center; padding: 20px; font-size: 13px; }
+
+.reports-page .reports-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.reports-page .reports-two-col .card { margin-bottom: 0; }
+
+/* Barras: marca mais fina e ponta arredondada */
+.reports-page .chart-container { gap: 14px; }
+.reports-page .chart-bar { max-width: 34px; border-radius: 5px 5px 2px 2px; }
+.reports-page .chart-label { font-size: 11px; }
+.reports-page .chart-value { font-size: 12px; }
+
+.reports-page .mini-chart { margin-bottom: 18px; }
+.reports-page .mini-chart:last-child { margin-bottom: 0; }
+.reports-page .mini-chart h3 { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
+
+/* Meters (distribuições em barra) */
+.reports-page .meter-row { margin-bottom: 10px; }
+.reports-page .meter-row:last-child { margin-bottom: 0; }
+.reports-page .meter-labels { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px; }
+.reports-page .meter-value { font-weight: 600; }
+.reports-page .meter-track { height: 7px; background: var(--muted-bg); border-radius: 4px; overflow: hidden; }
+.reports-page .meter-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+
+@media (max-width: 768px) {
+    .reports-page .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .reports-page .reports-two-col { grid-template-columns: 1fr; }
+    .reports-page .proc-name-cell { max-width: 220px; }
+}
+</style>
+{% endblock %}

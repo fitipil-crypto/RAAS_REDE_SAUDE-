@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Controle de Acesso — RAAS-CAPS{% endblock %}
+{% block page_title %}Controle de Acesso{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🔐 Controle de Acesso</h1>
+        <p>Gerenciamento de usuários e senhas</p>
+    </div>
+    {% if user.role == 'admin' %}
+    <button class="btn btn-primary" onclick="openModal()">＋ Novo Usuário</button>
+    {% endif %}
+</div>
+
+<div class="card" style="border-left:4px solid var(--primary);">
+    <div class="card-body" style="display:flex;align-items:center;gap:12px;">
+        <div class="user-avatar user-avatar-md">{{ user.name[0] | upper }}</div>
+        <div style="flex:1;">
+            <div style="font-weight:600;">{{ user.name }}</div>
+            <div style="font-size:13px;color:var(--muted);">@{{ user.username }} · <span class="badge badge-{{ 'purple' if user.role == 'admin' else 'blue' if user.role == 'operador' else 'green' if user.role == 'coordenador' else 'gray' }}">{{ user.role }}</span></div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="changeOwnPassword()">🔑 Minha Senha</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>Usuários Cadastrados</span>
+        <span class="badge badge-blue">{{ users | length }}</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Usuário</th><th>Login</th><th>Perfil</th><th>Status</th><th>Criado em</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr style="background: {{ '#f0f4ff' if u.id == user.id else 'transparent' }};">
+                    <td>
+                        <div class="cell-user">
+                            <div class="cell-avatar">{{ u.name[0] | upper }}</div>
+                            <div>{{ u.name }}{% if u.id == user.id %} <span style="font-size:11px;color:var(--primary);">(você)</span>{% endif %}</div>
+                        </div>
+                    </td>
+                    <td class="cell-mono">@{{ u.username }}</td>
+                    <td><span class="badge badge-{{ 'purple' if u.role == 'admin' else 'blue' if u.role == 'operador' else 'green' if u.role == 'coordenador' else 'gray' }}">{{ u.role }}</span></td>
+                    <td><span class="badge badge-{{ 'green' if u.active else 'gray' }}">{{ 'Ativo' if u.active else 'Inativo' }}</span></td>
+                    <td>{{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}</td>
+                    <td>
+                        {% if user.role == 'admin' or u.id == user.id %}
+                        <button class="btn btn-ghost btn-sm" onclick="changePassword('{{ u.id }}', '{{ u.name }}')">🔑</button>
+                        {% endif %}
+                        {% if user.role == 'admin' %}
+                        <button class="btn btn-ghost btn-sm" onclick="openModal('{{ u.id }}')">✏️</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteUser('{{ u.id }}')" {% if u.id == user.id %}disabled{% endif %}>🗑</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span>Permissões por Perfil</span></div>
+    <div class="card-body">
+        <div class="perms-grid">
+            <div class="perm-card"><div class="badge badge-purple">Administrador</div><div class="perm-list">Acesso total · Cadastrar/editar pacientes · Cadastrar/editar Profissionais · Cadastrar/editar procedimentos · Criar/editar usuários · Alterar senhas · Excluir registros · Exportar dados · Importar dados · Backup · Relatórios</div></div>
+            <div class="perm-card"><div class="badge badge-blue">Operador</div><div class="perm-list">Cadastrar pacientes · Registrar atendimentos · Backup</div></div>
+            <div class="perm-card"><div class="badge badge-green">Coordenador</div><div class="perm-list">Cadastrar/editar pacientes · Cadastrar/editar Profissionais · Cadastrar/editar procedimentos · Backup · Relatórios</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo/Editar Usuário -->
+<div class="modal-overlay" id="userModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header"><h2 id="modalTitle">Novo Usuário</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form id="userForm" onsubmit="saveUser(event)">
+            <input type="hidden" name="id" id="form-id">
+            <div class="form-group"><label>Nome Completo *</label><input type="text" name="name" required></div>
+            <div class="form-group"><label>Login *</label><input type="text" name="username" required></div>
+            <div class="form-group" id="passwordField"><label>Senha inicial (mín. 3 caracteres) *</label><input type="password" name="password"></div>
+            <div class="form-group"><label>Perfil *</label>
+                <select name="role"><option value="admin">Administrador</option><option value="operador">Operador</option><option value="coordenador">Coordenador</option></select>
+            </div>
+            <div class="form-group"><label>Status</label><select name="active"><option value="true">Ativo</option><option value="false">Inativo</option></select></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Alterar Senha -->
+<div class="modal-overlay" id="passModal" style="display:none;">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header"><h2 id="passModalTitle">Alterar Senha</h2><button class="modal-close" onclick="closePassModal()">✕</button></div>
+        <form id="passForm" onsubmit="savePassword(event)">
+            <input type="hidden" name="user_id" id="pass-user-id">
+            <div class="form-group" id="currentPassField"><label>Senha Atual</label><input type="password" name="current_password"></div>
+            <div class="form-group"><label>Nova Senha (mín. 3 caracteres)</label><input type="password" name="new_password" required></div>
+            <div class="form-group"><label>Confirmar Nova Senha</label><input type="password" name="confirm_password" required></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closePassModal()">Cancelar</button><button type="submit" class="btn btn-primary">✓ Alterar Senha</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/acesso.js"></script>
+{% endblock %}

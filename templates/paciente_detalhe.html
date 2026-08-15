@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}{{ paciente.name }} — RAAS-CAPS{% endblock %}
+{% block page_title %}Pacientes{% endblock %}
+
+{% macro simnao(v) %}{% if v %}<span class="badge badge-green">Sim</span>{% else %}<span class="badge badge-gray">Não</span>{% endif %}{% endmacro %}
+
+{% block content %}
+<div class="patient-hero">
+    <div class="patient-hero-left">
+        <div class="patient-avatar">{{ (paciente.name or '?')[:2]|upper }}</div>
+        <div>
+            <h1>{{ paciente.name }}</h1>
+            <div class="patient-hero-sub">Detalhes do paciente</div>
+            <div class="patient-hero-badges">
+                {% if idade is not none %}<span class="badge">{{ idade }} {{ 'ano' if idade == 1 else 'anos' }}</span>{% endif %}
+                {% if paciente.gender %}<span class="badge">{% if paciente.gender == 'M' %}Masculino{% else %}Feminino{% endif %}</span>{% endif %}
+                {% if paciente.cns %}<span class="badge">CNS {{ paciente.cns }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="patient-hero-actions">
+        <a href="/pacientes" class="btn btn-outline">← Voltar</a>
+        {% if user.role in ['admin', 'operador', 'coordenador'] %}
+        <button class="btn btn-primary" onclick="editPaciente('{{ paciente.id }}')">✏️ Editar</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card detail-card">
+    <div class="card-header"><span><span class="section-icon">🪪</span>Identificação</span></div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item wide"><label>Nome</label><div class="detail-value" style="font-weight:600;">{{ paciente.name }}</div></div>
+            <div class="detail-item"><label>Prontuário</label><div class="detail-value">{{ paciente.prontuario or '—' }}</div></div>
+            <div class="detail-item"><label>CNS</label><div class="detail-value" style="font-family:monospace;">{{ paciente.cns or '—' }}</div></div>
+            <div class="detail-item"><label>CPF</label><div class="detail-value" style="font-family:monospace;">{{ paciente.cpf or '—' }}</div></div>
+            <div class="detail-item"><label>Nascimento</label><div class="detail-value">{{ paciente.birth_date or '—' }}</div></div>
+            <div class="detail-item"><label>Sexo</label><div class="detail-value">{% if paciente.gender == 'M' %}Masculino{% elif paciente.gender == 'F' %}Feminino{% else %}—{% endif %}</div></div>
+            <div class="detail-item"><label>Raça/Cor</label><div class="detail-value">
+                {% if paciente.race == '01' %}Branca{% elif paciente.race == '02' %}Preta{% elif paciente.race == '03' %}Parda{% elif paciente.race == '04' %}Amarela{% elif paciente.race == '05' %}Indígena{% else %}—{% endif %}
+            </div></div>
+            <div class="detail-item wide"><label>Nome da Mãe</label><div class="detail-value">{{ paciente.mother_name or '—' }}</div></div>
+            <div class="detail-item wide"><label>Responsável</label><div class="detail-value">{{ paciente.guardian_name or '—' }}</div></div>
+            <div class="detail-item"><label>Telefone</label><div class="detail-value">{{ paciente.phone or '—' }}</div></div>
+            <div class="detail-item"><label>Celular</label><div class="detail-value">{{ paciente.cell_phone or '—' }}</div></div>
+            <div class="detail-item wide"><label>Email</label><div class="detail-value">{{ paciente.email or '—' }}</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card detail-card accent-secondary">
+    <div class="card-header"><span><span class="section-icon secondary">🏠</span>Endereço</span></div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item"><label>CEP</label><div class="detail-value">{{ paciente.cep or '—' }}</div></div>
+            <div class="detail-item"><label>Município (cód.)</label><div class="detail-value">{{ paciente.municipality_code or '—' }}</div></div>
+            <div class="detail-item wide"><label>Endereço</label><div class="detail-value">{{ paciente.address or '—' }}</div></div>
+            <div class="detail-item"><label>Nº</label><div class="detail-value">{{ paciente.street_number or '—' }}</div></div>
+            <div class="detail-item"><label>Complemento</label><div class="detail-value">{{ paciente.address_complement or '—' }}</div></div>
+            <div class="detail-item"><label>Bairro</label><div class="detail-value">{{ paciente.neighborhood or '—' }}</div></div>
+            <div class="detail-item"><label>Cidade</label><div class="detail-value">{{ municipio_nome or paciente.city or '—' }}</div></div>
+            <div class="detail-item"><label>UF</label><div class="detail-value">{{ municipio_uf or paciente.state or '—' }}</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card detail-card accent-accent">
+    <div class="card-header"><span><span class="section-icon accent">🩺</span>Clínico / Social</span></div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item"><label>CID Principal</label><div class="detail-value" style="font-family:monospace;">{{ paciente.cid_main or '—' }}</div></div>
+            <div class="detail-item"><label>CID Assoc. 1</label><div class="detail-value" style="font-family:monospace;">{{ paciente.cid_associated1 or '—' }}</div></div>
+            <div class="detail-item"><label>CID Assoc. 2</label><div class="detail-value" style="font-family:monospace;">{{ paciente.cid_associated2 or '—' }}</div></div>
+            <div class="detail-item wide"><label>Origem</label><div class="detail-value">
+                {% if paciente.user_origin == '01' %}01 - DEMANDA ESPONTANEA{% elif paciente.user_origin == '02' %}02 - ATENCAO BASICA{% elif paciente.user_origin == '03' %}03 - SERVICO DE URGENCIA{% elif paciente.user_origin == '04' %}04 - OUTRO CAPS{% elif paciente.user_origin == '05' %}05 - HOSPITAL DIA{% elif paciente.user_origin == '06' %}06 - HOSPITAL PSIQUIATRICO{% else %}—{% endif %}
+            </div></div>
+            <div class="detail-item wide"><label>Destino</label><div class="detail-value">
+                {% if paciente.user_destination == '00' %}00 - PERMANENCIA{% elif paciente.user_destination == '01' %}01 - CONTINUIDADE DO ACOMP. EM OUTRO CAPS{% elif paciente.user_destination == '02' %}02 - CONTINUIDADE DO ACOMP. NA ATENCAO BASICA{% elif paciente.user_destination == '03' %}03 - ALTA{% elif paciente.user_destination == '04' %}04 - OBITO{% else %}—{% endif %}
+            </div></div>
+            <div class="detail-item"><label>Data Admissão</label><div class="detail-value">{{ paciente.admission_date or '—' }}</div></div>
+            <div class="detail-item"><label>Data Conclusão</label><div class="detail-value">{{ paciente.conclusion_date or '—' }}</div></div>
+            <div class="detail-item"><label>CNES USF</label><div class="detail-value">{{ paciente.cnes_usf or '—' }}</div></div>
+            <div class="detail-item"><label>Nº Autorização</label><div class="detail-value">{{ paciente.authorization_number or '—' }}</div></div>
+        </div>
+        <hr class="detail-sep">
+        <div class="detail-grid">
+            <div class="detail-item"><label>Usuário de Drogas</label><div class="detail-value">{{ simnao(paciente.drug_user == 'S') }}</div></div>
+            <div class="detail-item"><label>Álcool</label><div class="detail-value">{{ simnao(paciente.alcohol_user) }}</div></div>
+            <div class="detail-item"><label>Crack</label><div class="detail-value">{{ simnao(paciente.crack_user) }}</div></div>
+            <div class="detail-item"><label>Outras Drogas</label><div class="detail-value">{{ simnao(paciente.other_drugs_user) }}</div></div>
+            <div class="detail-item"><label>Situação de Rua</label><div class="detail-value">{{ simnao(paciente.street_situation == 'S') }}</div></div>
+            <div class="detail-item"><label>Cobertura ESF</label><div class="detail-value">{{ simnao(paciente.esf_coverage == 'S') }}</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card detail-card accent-muted">
+    <div class="card-header"><span><span class="section-icon muted">🕘</span>Metadados</span></div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item"><label>Criado em</label><div class="detail-value">{{ paciente.created_at.strftime('%d/%m/%Y %H:%M') if paciente.created_at else '—' }}</div></div>
+            <div class="detail-item"><label>Atualizado em</label><div class="detail-value">{{ paciente.updated_at.strftime('%d/%m/%Y %H:%M') if paciente.updated_at else '—' }}</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Paciente (reutilizado para edição) -->
+<div class="modal-overlay" id="pacienteModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Editar Paciente</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="pacienteForm" onsubmit="savePaciente(event)" novalidate>
+            <div class="modal-tabs">
+                <button type="button" class="tab-btn active" data-tab="tab-ident" onclick="switchTab('tab-ident', this)">Identificação</button>
+                <button type="button" class="tab-btn" data-tab="tab-addr" onclick="switchTab('tab-addr', this)">Endereço</button>
+                <button type="button" class="tab-btn" data-tab="tab-clin" onclick="switchTab('tab-clin', this)">Clínico/Social</button>
+            </div>
+
+            <div class="tab-content active" id="tab-ident">
+                <input type="hidden" name="id" id="form-id">
+                <div class="form-row">
+                    <div class="form-group" style="flex:3"><label>Nome *</label><input type="text" name="name" required oninput="uppercaseInput(this)"></div>
+                    <div class="form-group" style="flex:1"><label>Prontuário</label><input type="text" name="prontuario" inputmode="numeric" pattern="[0-9]*" maxlength="50" data-digits-only></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>CNS</label><input type="text" name="cns" inputmode="numeric" pattern="[0-9]*" maxlength="15" data-digits-only></div>
+                    <div class="form-group"><label>CPF</label><input type="text" name="cpf" inputmode="numeric" maxlength="14" data-digits-only></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Nascimento</label><input type="date" name="birth_date"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Sexo</label>
+                        <select name="gender"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select>
+                    </div>
+                    <div class="form-group" style="position:relative;"><label>Nacionalidade</label>
+                        <input type="text" id="nationalityText" class="autocomplete-input" data-code-for="nationalityCode" autocomplete="off" value="010-BRASIL" placeholder="Buscar nacionalidade...">
+                        <button type="button" class="input-clear-btn" id="nationalityClearBtn" tabindex="-1" title="Limpar seleção">✕</button>
+                        <input type="hidden" name="nationality" id="nationalityCode" value="010">
+                        <div id="nationalityResults" class="autocomplete-results" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Raça/Cor</label>
+                        <select name="race" onchange="updateEthnicityField()"><option value="">—</option><option value="01">Branca</option><option value="02">Preta</option><option value="03">Parda</option><option value="04">Amarela</option><option value="05">Indígena</option></select>
+                    </div>
+                    <div class="form-group"><label>Etnia</label>
+                        <input type="text" name="ethnicity" list="ethnicityList" autocomplete="off" placeholder="Buscar ou digitar..." disabled>
+                        <datalist id="ethnicityList">
+                            <option value="0208-TICUNA"><option value="0077-KAINGANG"><option value="0143-MAKUXI">
+                            <option value="0207-TERENA"><option value="0058-GUARANI KAIOWA"><option value="0059-GUARANI M'BYA">
+                            <option value="0060-GUARANI NANDEVA"><option value="0255-YANOMAMI NINAM">
+                            <option value="0256-YANOMAMI SANUMA"><option value="0257-YANOMAMI YANOMAM">
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Nome da Mãe</label><input type="text" name="mother_name" oninput="uppercaseInput(this)"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Nome do Responsável</label><input type="text" name="guardian_name" oninput="uppercaseInput(this)"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Telefone</label><input type="text" name="phone" inputmode="numeric" maxlength="15" data-digits-only></div>
+                    <div class="form-group"><label>Celular</label><input type="text" name="cell_phone" inputmode="numeric" maxlength="15" data-digits-only></div>
+                    <div class="form-group"><label>Email</label><input type="email" name="email"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-addr">
+                <div class="form-row">
+                    <div class="form-group"><label>CEP</label><input type="text" name="cep" inputmode="numeric" pattern="[0-9]*" maxlength="8" data-digits-only></div>
+                    <div class="form-group" style="position:relative;"><label>Tipo de Logradouro</label>
+                        <input type="text" id="streetTypeText" class="autocomplete-input" data-code-for="streetTypeCode" autocomplete="off" placeholder="Buscar tipo de logradouro...">
+                        <button type="button" class="input-clear-btn" id="streetTypeClearBtn" tabindex="-1" title="Limpar seleção">✕</button>
+                        <input type="hidden" name="street_code" id="streetTypeCode">
+                        <div id="streetTypeResults" class="autocomplete-results" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:3"><label>Endereço</label><input type="text" name="address" oninput="uppercaseInput(this)"></div>
+                    <div class="form-group" style="max-width:80px;"><label>Nº</label><input type="text" name="street_number" inputmode="numeric" pattern="[0-9]*" maxlength="10" data-digits-only></div>
+                    <div class="form-group" style="flex:1.5"><label>Complemento</label><input type="text" name="address_complement" oninput="uppercaseInput(this)"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Bairro</label><input type="text" name="neighborhood" oninput="uppercaseInput(this)"></div>
+                    <div class="form-group" style="position:relative;"><label>Cidade</label>
+                        <input type="text" id="cityText" name="city" autocomplete="off" oninput="uppercaseInput(this); searchMunicipio(this.value); updateCityDefaultCheck()" onfocus="searchMunicipio(this.value)">
+                        <input type="hidden" name="municipality_code" id="municipalityCode">
+                        <div id="municipioResults" class="autocomplete-results" style="display:none;"></div>
+                    </div>
+                    <div class="form-group" style="max-width:100px;"><label>UF</label>
+                        <select name="state" onchange="updateCityDefaultCheck()">
+                            <option value="">—</option>
+                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
+                            <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
+                            <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
+                            <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
+                            <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" id="cityDefaultRow">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:400;cursor:pointer;">
+                        <input type="checkbox" id="cityDefaultCheck" style="width:auto;">
+                        Usar esta cidade/UF como padrão para novos pacientes
+                    </label>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-clin">
+                <div class="form-row">
+                    <div class="form-group"><label>CID Principal</label><input type="text" name="cid_main"></div>
+                    <div class="form-group"><label>CID Assoc. 1</label><input type="text" name="cid_associated1"></div>
+                    <div class="form-group"><label>CID Assoc. 2</label><input type="text" name="cid_associated2"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Origem</label>
+                        <select name="user_origin">
+                            <option value="">—</option>
+                            <option value="01">01 - DEMANDA ESPONTANEA</option>
+                            <option value="02">02 - ATENCAO BASICA</option>
+                            <option value="03">03 - SERVICO DE URGENCIA</option>
+                            <option value="04">04 - OUTRO CAPS</option>
+                            <option value="05">05 - HOSPITAL DIA</option>
+                            <option value="06">06 - HOSPITAL PSIQUIATRICO</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Destino</label>
+                        <select name="user_destination">
+                            <option value="00">00 - PERMANENCIA</option>
+                            <option value="01">01 - CONTINUIDADE DO ACOMP. EM OUTRO CAPS</option>
+                            <option value="02">02 - CONTINUIDADE DO ACOMP. NA ATENCAO BASICA</option>
+                            <option value="03">03 - ALTA</option>
+                            <option value="04">04 - OBITO</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Data Admissão</label><input type="date" name="admission_date"></div>
+                    <div class="form-group"><label>Data Conclusão</label><input type="date" name="conclusion_date"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Usuário de Drogas</label>
+                        <select name="drug_user"><option value="N">Não</option><option value="S">Sim</option></select>
+                    </div>
+                    <div class="form-group"><label>Situação de Rua</label>
+                        <select name="street_situation"><option value="N">Não</option><option value="S">Sim</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Usuário de Álcool e/ou Outras Drogas?</label>
+                        <div style="display:flex;gap:18px;padding-top:8px;">
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+                                <input type="hidden" name="alcohol_user" value="false">
+                                <input type="checkbox" name="alcohol_user" value="true" style="width:auto;"> Álcool
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+                                <input type="hidden" name="crack_user" value="false">
+                                <input type="checkbox" name="crack_user" value="true" style="width:auto;"> Crack
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+                                <input type="hidden" name="other_drugs_user" value="false">
+                                <input type="checkbox" name="other_drugs_user" value="true" style="width:auto;"> Outras Drogas
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Cobertura ESF</label>
+                        <select name="esf_coverage"><option value="N">Não</option><option value="S">Sim</option></select>
+                    </div>
+                    <div class="form-group"><label>CNES USF</label><input type="text" name="cnes_usf" inputmode="numeric" pattern="[0-9]*" maxlength="10" data-digits-only></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const DEFAULT_CITY = {{ default_city | tojson }};
+const DEFAULT_STATE = {{ default_state | tojson }};
+const DEFAULT_MUNICIPALITY_CODE = {{ default_municipality_code | tojson }};
+</script>
+<script src="/static/js/pacientes.js?v=20"></script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Roadmap — RAAS-CAPS{% endblock %}
+{% block page_title %}Roadmap{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🗺️ Roadmap</h1>
+        <p>Planejamento e acompanhamento de metas do projeto</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">＋ Novo Item</button>
+</div>
+
+{% set total = items | length %}
+{% set done_count = items | selectattr('done') | list | length %}
+{% set pct = (done_count / total * 100) | round(1) if total > 0 else 0 %}
+
+<div class="roadmap-progress-bar-wrap">
+    <div class="roadmap-progress-info">
+        <span>Progresso geral</span>
+        <span><strong id="progressPct">{{ pct }}%</strong> — {{ done_count }}/{{ total }} concluídos</span>
+    </div>
+    <div class="roadmap-progress-bar">
+        <div class="roadmap-progress-fill" id="progressFill" style="width: {{ pct }}%"></div>
+    </div>
+</div>
+
+<div class="roadmap-board">
+    <div class="roadmap-column" data-status="planejado">
+        <div class="roadmap-column-header roadmap-col-planned">
+            <span class="roadmap-column-title">📌 Planejado</span>
+            <span class="roadmap-column-count">{{ items | selectattr('status', 'equalto', 'planejado') | list | length }}</span>
+        </div>
+        <div class="roadmap-column-body">
+            {% for item in items if item.status == 'planejado' %}
+            <div class="roadmap-card {{ 'roadmap-card-done' if item.done }}" data-id="{{ item.id }}">
+                <div class="roadmap-card-top">
+                    <label class="roadmap-card-checkbox">
+                        <input type="checkbox" {{ 'checked' if item.done }} onchange="toggleDone('{{ item.id }}')">
+                        <span class="roadmap-checkmark"></span>
+                    </label>
+                    <div class="roadmap-card-title {{ 'roadmap-done' if item.done }}">{{ item.title }}</div>
+                </div>
+                {% if item.description %}<div class="roadmap-card-desc">{{ item.description }}</div>{% endif %}
+                <div class="roadmap-card-footer">
+                    <span class="roadmap-priority roadmap-priority-{{ item.priority }}">
+                        {{ {'alta': '🔴 Alta', 'media': '🟡 Média', 'baixa': '🟢 Baixa'}.get(item.priority, item.priority) }}
+                    </span>
+                    <div class="roadmap-card-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="editItem('{{ item.id }}')" title="Editar">✏️</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteItem('{{ item.id }}')" title="Excluir">🗑</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if items | selectattr('status', 'equalto', 'planejado') | list | length == 0 %}
+            <div class="roadmap-empty">Nenhum item planejado</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="roadmap-column" data-status="em_andamento">
+        <div class="roadmap-column-header roadmap-col-progress">
+            <span class="roadmap-column-title">🔄 Em Andamento</span>
+            <span class="roadmap-column-count">{{ items | selectattr('status', 'equalto', 'em_andamento') | list | length }}</span>
+        </div>
+        <div class="roadmap-column-body">
+            {% for item in items if item.status == 'em_andamento' %}
+            <div class="roadmap-card {{ 'roadmap-card-done' if item.done }}" data-id="{{ item.id }}">
+                <div class="roadmap-card-top">
+                    <label class="roadmap-card-checkbox">
+                        <input type="checkbox" {{ 'checked' if item.done }} onchange="toggleDone('{{ item.id }}')">
+                        <span class="roadmap-checkmark"></span>
+                    </label>
+                    <div class="roadmap-card-title {{ 'roadmap-done' if item.done }}">{{ item.title }}</div>
+                </div>
+                {% if item.description %}<div class="roadmap-card-desc">{{ item.description }}</div>{% endif %}
+                <div class="roadmap-card-footer">
+                    <span class="roadmap-priority roadmap-priority-{{ item.priority }}">
+                        {{ {'alta': '🔴 Alta', 'media': '🟡 Média', 'baixa': '🟢 Baixa'}.get(item.priority, item.priority) }}
+                    </span>
+                    <div class="roadmap-card-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="editItem('{{ item.id }}')" title="Editar">✏️</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteItem('{{ item.id }}')" title="Excluir">🗑</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if items | selectattr('status', 'equalto', 'em_andamento') | list | length == 0 %}
+            <div class="roadmap-empty">Nenhum item em andamento</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="roadmap-column" data-status="concluido">
+        <div class="roadmap-column-header roadmap-col-done">
+            <span class="roadmap-column-title">✅ Concluído</span>
+            <span class="roadmap-column-count">{{ items | selectattr('status', 'equalto', 'concluido') | list | length }}</span>
+        </div>
+        <div class="roadmap-column-body">
+            {% for item in items if item.status == 'concluido' %}
+            <div class="roadmap-card {{ 'roadmap-card-done' if item.done }}" data-id="{{ item.id }}">
+                <div class="roadmap-card-top">
+                    <label class="roadmap-card-checkbox">
+                        <input type="checkbox" {{ 'checked' if item.done }} onchange="toggleDone('{{ item.id }}')">
+                        <span class="roadmap-checkmark"></span>
+                    </label>
+                    <div class="roadmap-card-title {{ 'roadmap-done' if item.done }}">{{ item.title }}</div>
+                </div>
+                {% if item.description %}<div class="roadmap-card-desc">{{ item.description }}</div>{% endif %}
+                <div class="roadmap-card-footer">
+                    <span class="roadmap-priority roadmap-priority-{{ item.priority }}">
+                        {{ {'alta': '🔴 Alta', 'media': '🟡 Média', 'baixa': '🟢 Baixa'}.get(item.priority, item.priority) }}
+                    </span>
+                    <div class="roadmap-card-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="editItem('{{ item.id }}')" title="Editar">✏️</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteItem('{{ item.id }}')" title="Excluir">🗑</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if items | selectattr('status', 'equalto', 'concluido') | list | length == 0 %}
+            <div class="roadmap-empty">Nenhum item concluído</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if items | selectattr('status', 'equalto', 'cancelado') | list | length > 0 %}
+<div class="card" style="margin-top:20px;">
+    <div class="card-header">
+        <span>🚫 Cancelados</span>
+        <span class="badge badge-red">{{ items | selectattr('status', 'equalto', 'cancelado') | list | length }}</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+        {% for item in items if item.status == 'cancelado' %}
+        <div class="roadmap-item-inline" data-id="{{ item.id }}">
+            <div class="roadmap-title roadmap-done">{{ item.title }}</div>
+            <div class="roadmap-item-inline-actions">
+                <button class="btn btn-ghost btn-sm" onclick="editItem('{{ item.id }}')">✏️</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteItem('{{ item.id }}')">🗑</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="modal-overlay" id="itemModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Item</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="itemForm" onsubmit="saveItem(event)">
+            <input type="hidden" name="id" id="form-id">
+            <div class="form-row">
+                <div class="form-group"><label>Título *</label><input type="text" name="title" required maxlength="200"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Descrição</label><textarea name="description" rows="3"></textarea></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Status</label>
+                    <select name="status">
+                        <option value="planejado">Planejado</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Prioridade</label>
+                    <select name="priority">
+                        <option value="baixa">Baixa</option>
+                        <option value="media" selected>Média</option>
+                        <option value="alta">Alta</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Ordem</label><input type="number" name="order" value="0" min="0"></div>
+                <div class="form-group"><label>Concluído</label>
+                    <select name="done"><option value="false">Não</option><option value="true">Sim</option></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/roadmap.js"></script>
+{% endblock %}

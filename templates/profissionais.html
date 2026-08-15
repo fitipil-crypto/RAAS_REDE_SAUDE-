@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Profissionais — RAAS-CAPS{% endblock %}
+{% block page_title %}Profissionais{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>👨‍⚕️ Profissionais</h1>
+        <p>Gerenciamento de profissionais de saúde</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        {% if user.role == 'admin' %}
+        <a href="/api/profissionais/exportar/csv" class="btn btn-outline">📥 Exportar CSV</a>
+        <button class="btn btn-outline" onclick="document.getElementById('importProfInput').click()">📤 Importar CSV</button>
+        <input type="file" id="importProfInput" accept=".csv" style="display:none;" onchange="importarProfissionaisCSV(event)">
+        {% endif %}
+        {% if user.role in ['admin', 'coordenador'] %}
+        <button class="btn btn-primary" onclick="openModal()">＋ Novo Profissional</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome, CNS ou especialidade..." oninput="filterTable()">
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>Profissionais Cadastrados</span>
+        <span class="badge badge-blue">{{ profissionais | length }}</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table" id="profTable">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>CNS</th>
+                    <th>Especialidade</th>
+                    <th>CBO</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in profissionais %}
+                <tr data-search="{{ p.name | lower }} {{ p.cns or '' }} {{ p.specialty or '' }}">
+                    <td class="cell-name">{{ p.name }}</td>
+                    <td class="cell-mono">{{ p.cns or '—' }}</td>
+                    <td>{{ p.specialty or '—' }}</td>
+                    <td>{{ p.cbo or '—' }}</td>
+                    <td><span class="badge badge-{{ 'green' if p.active else 'gray' }}">{{ 'Ativo' if p.active else 'Inativo' }}</span></td>
+                    <td>
+                        {% if user.role in ['admin', 'coordenador'] %}
+                        <button class="btn btn-ghost btn-sm" onclick="editProf('{{ p.id }}')">✏️</button>
+                        {% endif %}
+                        {% if user.role == 'admin' %}
+                        <button class="btn btn-ghost btn-sm" onclick="deleteProf('{{ p.id }}')">🗑</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="profModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Profissional</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="profForm" onsubmit="saveProf(event)">
+            <input type="hidden" name="id" id="form-id">
+            <div class="form-row">
+                <div class="form-group"><label>Nome *</label><input type="text" name="name" required oninput="uppercaseInput(this)"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>CPF</label><input type="text" name="cpf"></div>
+                <div class="form-group"><label>CNS</label><input type="text" name="cns"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>CBO</label><input type="text" name="cbo"></div>
+                <div class="form-group"><label>Especialidade</label><input type="text" name="specialty" oninput="uppercaseInput(this)"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Status</label>
+                    <select name="active"><option value="true">Ativo</option><option value="false">Inativo</option></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/profissionais.js?v=3"></script>
+{% endblock %}

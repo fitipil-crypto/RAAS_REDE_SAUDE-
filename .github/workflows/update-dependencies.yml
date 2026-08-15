@@ -1,0 +1,60 @@
+name: Alert dependency updates
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check outdated dependencies
+        id: check
+        run: |
+          echo 'OUTDATED<<EOF' >> "$GITHUB_OUTPUT"
+          pip list --outdated --format=json | python -c "
+import json, sys
+packages = json.load(sys.stdin)
+if not packages:
+    print('Todas as dependências estão atualizadas.')
+    sys.exit(0)
+for p in packages:
+    print(f'- **{p[\"name\"]}**: {p[\"version\"]} → {p[\"latest_version\"]}')
+" >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
+
+      - name: Check if issue already exists
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --repo "${{ github.repository }}" --label "dependencies" --search "Alert: dependências desatualizadas" --json number --jq '.[0].number')
+          echo "number=$existing" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update issue
+        if: steps.check.outputs.OUTDATED != 'Todas as dependências estão atualizadas.'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body="${{ steps.check.outputs.OUTDATED }}"
+          title="Alert: dependências desatualizadas"
+          if [ -n "${{ steps.issue.outputs.number }}" ]; then
+            gh issue edit "${{ steps.issue.outputs.number }}" --repo "${{ github.repository }}" --body "$body"
+          else
+            gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body" --label "dependencies"
+          fi

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RAAS-CAPS{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if user %}
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-logo">🏥</span>
+                <span class="sidebar-title">RAAS-CAPS</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
+                <a href="/pacientes" class="nav-item {% if active_page == 'pacientes' %}active{% endif %}">👥 Pacientes</a>
+                <a href="/profissionais" class="nav-item {% if active_page == 'profissionais' %}active{% endif %}">👨‍⚕️ Profissionais</a>
+                <a href="/procedimentos" class="nav-item {% if active_page == 'procedimentos' %}active{% endif %}">📋 Procedimentos</a>
+                <a href="/registros" class="nav-item {% if active_page == 'registros' %}active{% endif %}">📝 Registros RAAS</a>
+                <a href="/exportacao" class="nav-item {% if active_page == 'exportacao' %}active{% endif %}">📤 Exportação RAAS</a>
+                <a href="/relatorios" class="nav-item {% if active_page == 'relatorios' %}active{% endif %}">📈 Relatórios</a>
+                <a href="/configuracoes" class="nav-item {% if active_page == 'configuracoes' %}active{% endif %}">⚙️ Configurações</a>
+                <a href="/importar" class="nav-item {% if active_page == 'importar' %}active{% endif %}">📥 Importar RAAS</a>
+                <a href="/backup" class="nav-item {% if active_page == 'backup' %}active{% endif %}">💾 Backup</a>
+                {% if user.role == 'admin' %}
+                <a href="/excluir" class="nav-item {% if active_page == 'excluir' %}active{% endif %}">🗑️ Excluir Dados</a>
+                {% endif %}
+                <a href="/roadmap" class="nav-item {% if active_page == 'roadmap' %}active{% endif %}">🗺️ Roadmap</a>
+                <a href="/acesso" class="nav-item {% if active_page == 'acesso' %}active{% endif %}">🔐 Controle de Acesso</a>
+                {% if user.role == 'admin' %}
+                <a href="/logs" class="nav-item {% if active_page == 'logs' %}active{% endif %}">📋 Logs do Sistema</a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
+                </div>
+                <div class="topbar-right">
+                    <span class="topbar-date" id="currentDate"></span>
+                    <div class="user-badge">
+                        <div class="user-avatar">{{ user.name[0] | upper }}</div>
+                        <span class="user-name">{{ user.name }}</span>
+                        <span class="user-role role-{{ user.role }}">{{ user.role }}</span>
+                    </div>
+                    <a href="/logout" class="btn-logout">🚪 Sair</a>
+                </div>
+            </header>
+
+            <main class="page-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% else %}
+    {% block no_auth_content %}{% endblock %}
+    {% endif %}
+
+    <div id="toast-container"></div>
+    <script src="/static/js/app.js?v=2"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

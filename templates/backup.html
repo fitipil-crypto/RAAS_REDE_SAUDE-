@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Backup — RAAS-CAPS{% endblock %}
+{% block page_title %}Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💾 Backup</h1>
+    <p>Backup e restauração de dados</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-primary"><div class="stat-icon">👥</div><div class="stat-value">{{ stats.pacientes }}</div><div class="stat-label">Pacientes</div></div>
+    <div class="stat-card stat-secondary"><div class="stat-icon">👨‍⚕️</div><div class="stat-value">{{ stats.profissionais }}</div><div class="stat-label">Profissionais</div></div>
+    <div class="stat-card stat-accent"><div class="stat-icon">📋</div><div class="stat-value">{{ stats.procedimentos }}</div><div class="stat-label">Procedimentos</div></div>
+    <div class="stat-card stat-warning"><div class="stat-icon">📝</div><div class="stat-value">{{ stats.registros }}</div><div class="stat-label">Registros RAAS</div></div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <h2>Gerar Backup</h2>
+        <p style="color:var(--muted);">Exporta todos os dados em um arquivo <code>.json</code>.</p>
+        <div style="background:var(--secondary-light);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#065f46;">
+            ✓ Inclui: {{ stats.pacientes }} pacientes · {{ stats.profissionais }} profissionais · {{ stats.procedimentos }} procedimentos · {{ stats.registros }} registros RAAS · configurações
+        </div>
+        <button class="btn btn-secondary btn-lg" onclick="downloadBackup()">⬇️ Baixar Backup Agora</button>
+    </div>
+</div>
+
+{% if user.role == 'admin' %}
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <h2>Restaurar Backup</h2>
+        <p style="color:var(--muted);">Carregue um arquivo <code>.json</code> para restaurar os dados.</p>
+        <div style="background:var(--warning-light);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e;">
+            ⚠️ Atenção: a restauração substitui todos os dados atuais.
+        </div>
+        <input type="file" id="restoreInput" accept=".json" style="display:none;" onchange="handleRestore(event)">
+        <button class="btn btn-outline btn-lg" onclick="document.getElementById('restoreInput').click()">📁 Selecionar Arquivo de Backup</button>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function downloadBackup() {
+    window.location.href = '/api/backup/download';
+}
+async function handleRestore(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('A restauração substituirá TODOS os dados atuais. Continuar?')) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await fetch('/api/backup/restaurar', { method: 'POST', body: formData });
+    if (resp.ok) {
+        const data = await resp.json();
+        showToast('Backup restaurado com sucesso', 'success');
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        showToast('Erro ao restaurar backup', 'error');
+    }
+}
+</script>
+{% endblock %}

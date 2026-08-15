@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Importar RAAS — RAAS-CAPS{% endblock %}
+{% block page_title %}Importar RAAS{% endblock %}
+
+{% block content %}
+<style>
+.import-tab {
+    padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--muted-bg); color: var(--muted); font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: all .15s;
+}
+.import-tab.active { background: var(--primary, #2563eb); color: #fff; border-color: var(--primary, #2563eb); }
+.import-list .data-table { width: 100%; border-collapse: collapse; }
+.import-list .data-table th {
+    text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border);
+}
+.import-list .data-table td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+</style>
+<div class="page-header">
+    <h1>📥 Importar RAAS</h1>
+    <p>Importar arquivo RAAS no formato DATASUS</p>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <div id="dropZone" class="drop-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+            <div style="font-size:48px;margin-bottom:12px;">📁</div>
+            <div style="font-weight:600;margin-bottom:8px;">Arraste um arquivo RAAS aqui ou clique para selecionar</div>
+            <div style="color:var(--muted);font-size:13px;">Formato: arquivo .txt com registros 01, 15 e 16</div>
+            <input type="file" id="fileInput" accept=".txt" style="display:none;" onchange="handleFile(event)">
+            <button class="btn btn-outline" style="margin-top:16px;" onclick="document.getElementById('fileInput').click()">📁 Selecionar Arquivo</button>
+        </div>
+    </div>
+</div>
+
+<div id="previewSection" style="display:none;">
+    <div class="card">
+        <div class="card-header"><span>Pré-visualização</span></div>
+        <div class="card-body">
+            <div id="previewContent"></div>
+            <div id="warningsBox" style="display:none;"></div>
+            <div style="margin-top:20px;display:flex;gap:10px;">
+                <button class="btn btn-primary btn-lg" onclick="doImport()">✓ Confirmar Importação</button>
+                <button class="btn btn-outline" onclick="resetImport()">✕ Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="logSection" style="display:none;">
+    <div class="card">
+        <div class="card-header"><span>Log de Importação</span></div>
+        <div class="card-body">
+            <div id="logContent" style="max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;"></div>
+            <button class="btn btn-outline" style="margin-top:16px;" onclick="resetImport()">← Voltar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/importar.js"></script>
+{% endblock %}

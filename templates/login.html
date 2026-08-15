@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAAS-CAPS — Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card fade-in">
+            <div class="login-header">
+                <div class="login-logo">🏥</div>
+                <h1>RAAS-CAPS</h1>
+                <p>Sistema de Gestão de Atendimentos</p>
+            </div>
+            <form method="POST" action="/login" class="login-form">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" name="username" placeholder="Digite seu usuário" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="password" placeholder="Digite sua senha" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">👁</button>
+                    </div>
+                </div>
+                {% if error %}
+                <div class="alert alert-error">⚠️ {{ error }}</div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary btn-lg btn-block">🔑 Entrar</button>
+            </form>
+            <div class="login-hint">
+                Padrão inicial: usuário <strong>admin</strong> · senha <strong>admin</strong>
+            </div>
+        </div>
+    </div>
+    <script>
+    function togglePassword() {
+        const inp = document.getElementById('password');
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+    </script>
+</body>
+</html>

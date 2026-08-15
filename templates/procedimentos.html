@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Procedimentos — RAAS-CAPS{% endblock %}
+{% block page_title %}Procedimentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>📋 Procedimentos</h1>
+        <p>Gerenciamento de procedimentos RAAS</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        {% if user.role == 'admin' %}
+        <a href="/api/procedimentos/exportar/csv" class="btn btn-outline">📥 Exportar CSV</a>
+        <button class="btn btn-outline" onclick="document.getElementById('importProcInput').click()">📤 Importar CSV</button>
+        <input type="file" id="importProcInput" accept=".csv" style="display:none;" onchange="importarProcedimentosCSV(event)">
+        {% endif %}
+        {% if user.role in ['admin', 'coordenador'] %}
+        <button class="btn btn-primary" onclick="openModal()">＋ Novo Procedimento</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por nome ou código..." oninput="filterTable()">
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>Procedimentos Cadastrados</span>
+        <span class="badge badge-blue">{{ procedimentos | length }}</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table" id="procTable">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in procedimentos %}
+                <tr data-search="{{ p.name | lower }} {{ p.code }}">
+                    <td><span class="badge badge-gray">{{ p.code }}</span></td>
+                    <td class="cell-name">{{ p.name }}</td>
+                    <td>{{ p.category or '—' }}</td>
+                    <td><span class="badge badge-{{ 'green' if p.active else 'gray' }}">{{ 'Ativo' if p.active else 'Inativo' }}</span></td>
+                    <td>
+                        {% if user.role in ['admin', 'coordenador'] %}
+                        <button class="btn btn-ghost btn-sm" onclick="openModal('{{ p.id }}')">✏️</button>
+                        {% endif %}
+                        {% if user.role == 'admin' %}
+                        <button class="btn btn-ghost btn-sm" onclick="deleteProc('{{ p.id }}')">🗑</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="procModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Procedimento</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="procForm" onsubmit="saveProc(event)">
+            <input type="hidden" name="id" id="form-id">
+            <div class="form-row">
+                <div class="form-group"><label>Código SIGTAP *</label><input type="text" name="code" required placeholder="00.00.00.000-0"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Nome *</label><input type="text" name="name" required oninput="uppercaseInput(this)"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Descrição</label><textarea name="description" rows="2"></textarea></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Categoria</label>
+                    <select name="category">
+                        <option value="RAAS (Atenção Psicossocial)">RAAS (Atenção Psicossocial)</option>
+                        <option value="BPA Individualizado">BPA Individualizado</option>
+                        <option value="BPA Consolidado">BPA Consolidado</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Status</label>
+                    <select name="active"><option value="true">Ativo</option><option value="false">Inativo</option></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/procedimentos.js?v=3"></script>
+{% endblock %}

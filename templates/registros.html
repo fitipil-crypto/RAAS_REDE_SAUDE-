@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Registros RAAS — RAAS-CAPS{% endblock %}
+{% block page_title %}Registros RAAS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>📝 Registros RAAS</h1>
+        <p>Atendimentos registrados por competência</p>
+    </div>
+    <div class="month-selector">
+        <label>Competência:</label>
+        <input type="month" id="monthPicker" value="{{ sel_month }}" onchange="changeMonth()">
+        {% if user.role in ['admin', 'operador'] %}
+        <button class="btn btn-primary" onclick="openModal()">＋ Novo Registro</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>Atendimentos de {{ sel_month }}</span>
+        <span class="badge badge-blue">{{ registros | length }} registro(s) · {{ groups | length }} paciente(s)</span>
+    </div>
+    {% if groups %}
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);position:relative;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="registroSearch" placeholder="🔎 Buscar paciente por nome ou prontuário..." autocomplete="off"
+               oninput="filterRegistros()" style="flex:1;min-width:220px;max-width:360px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+        <div style="display:flex;align-items:center;gap:6px;">
+            <label for="registroDateSearch" style="font-size:13px;color:var(--muted);white-space:nowrap;">📅 Atendidos em:</label>
+            <input type="date" id="registroDateSearch" onchange="filterRegistros()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearRegistroDateSearch()" title="Limpar data">✕</button>
+        </div>
+    </div>
+    <div id="registroNoMatch" style="display:none;text-align:center;padding:40px;color:var(--muted);">
+        <div style="font-size:32px;margin-bottom:10px;">🔎</div>
+        <div>Nenhum paciente encontrado para essa busca</div>
+    </div>
+    {% endif %}
+
+    {% if groups %}
+    {% for g in groups %}
+    <div class="registro-group" data-patient-name="{{ (g.patient.name if g.patient else 'Desconhecido') | lower }}" data-patient-prontuario="{{ (g.patient.prontuario if g.patient else '') | lower }}" style="border-bottom:1px solid var(--border);">
+        <div class="registro-group-header" onclick="toggleGrupo(this)" style="padding:4px 16px;display:flex;align-items:center;gap:6px;background:var(--secondary-light);cursor:pointer;user-select:none;">
+            <span class="grupo-chevron" style="font-size:10px;color:var(--muted);width:10px;">▸</span>
+            <div style="width:19px;height:19px;border-radius:50%;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;flex-shrink:0;">
+                {{ g.patient.name[0] | upper if g.patient else '?' }}
+            </div>
+            <strong style="font-size:12px;">{{ g.patient.name if g.patient else 'Desconhecido' }}{% if g.patient and g.patient.prontuario %} <span style="color:var(--muted);font-weight:600;">- Pront: {{ g.patient.prontuario }}</span>{% endif %}</strong>
+            <span class="badge badge-blue" style="font-size:10px;padding:1px 6px;">{{ g.records | length }} atend.</span>
+        </div>
+        <div class="table-wrapper" style="display:none;">
+            <table class="data-table data-table-compact">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Procedimento</th>
+                        <th>Profissional</th>
+                        <th>Tipo</th>
+                        <th>Qtd</th>
+                        <th>Local</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in g.records %}
+                    <tr data-date="{{ r.service_date }}">
+                        <td>{{ r.service_date }}</td>
+                        <td>{{ r.procedure_name[:40] }}</td>
+                        <td>{{ r.professional_name }}</td>
+                        <td><span class="badge badge-purple">{{ r.service_type_label }}</span></td>
+                        <td style="text-align:center;">{{ r.quantity or 1 }}</td>
+                        <td><span class="badge badge-{{ 'yellow' if r.local_realizacao == 'T' else 'blue' }}">{{ 'Território' if r.local_realizacao == 'T' else 'CAPS' }}</span></td>
+                        <td>
+                            {% if user.role in ['admin', 'operador'] %}
+                            <button class="btn btn-ghost btn-sm" onclick="openModal('{{ r.id }}')">✏️</button>
+                            {% endif %}
+                            {% if user.role == 'admin' %}
+                            <button class="btn btn-ghost btn-sm" onclick="deleteReg('{{ r.id }}')">🗑</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:60px;color:var(--muted);">
+        <div style="font-size:40px;margin-bottom:12px;">📋</div>
+        <div style="font-weight:500;">Nenhum atendimento nesta competência</div>
+        <div style="font-size:13px;margin-top:4px;">Clique em "Novo Registro" para começar</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-overlay" id="regModal" style="display:none;">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Registro RAAS</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="regForm" onsubmit="saveReg(event)">
+            <input type="hidden" name="id" id="form-id">
+            <input type="hidden" name="service_month" id="form-month" value="{{ sel_month }}">
+            <div class="form-row">
+                <div class="form-group"><label>Data do Atendimento *</label><input type="date" name="service_date" required></div>
+                <div class="form-group"><label>Local</label>
+                    <select name="local_realizacao"><option value="C">CAPS</option><option value="T">Território</option></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="position:relative;">
+                    <label>Paciente *</label>
+                    <input type="text" id="patientSearch" class="autocomplete-input" placeholder="Buscar paciente por nome, CNS ou prontuário..." autocomplete="off" oninput="searchPatient(this.value)" onfocus="searchPatient(this.value)" required>
+                    <button type="button" class="input-clear-btn" tabindex="-1" onclick="clearPatient()" title="Limpar seleção">✕</button>
+                    <input type="hidden" name="patient_id" id="form-patient-id">
+                    <div id="patientResults" class="autocomplete-results" style="display:none;"></div>
+                </div>
+                <div class="form-group" style="position:relative;">
+                    <label>Profissional *</label>
+                    <input type="text" id="profSearch" class="autocomplete-input" placeholder="Buscar profissional por nome..." autocomplete="off" oninput="searchProf(this.value)" onfocus="searchProf(this.value)" required>
+                    <button type="button" class="input-clear-btn" tabindex="-1" onclick="clearProf()" title="Limpar seleção">✕</button>
+                    <input type="hidden" name="professional_id" id="form-professional-id">
+                    <div id="profResults" class="autocomplete-results" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Procedimentos * <span style="font-weight:400;color:var(--muted);font-size:12px;">(até 5 simultâneos)</span></label>
+                <div id="procRows"></div>
+                <button type="button" class="btn btn-outline btn-sm" id="addProcBtn" tabindex="-1" onclick="addProcRow()">＋ Adicionar procedimento</button>
+            </div>
+            <div class="form-group" id="authorizationRow" style="display:none;">
+                <label>Nº da Autorização</label>
+                <input type="text" name="authorization" id="authorizationInput" placeholder="Informe o número da autorização" maxlength="20" disabled>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>CBO</label><input type="text" name="cbo_code" id="cboInput" placeholder="Auto"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Serviço (SRV)</label>
+                    <select name="srv">
+                        {% for o in srv_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group"><label>Classificação (CLS)</label>
+                    <select name="cls">
+                        {% for o in cls_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Equipe</label>
+                <input type="text" value="{{ default_team_code }}-{{ default_team_name }}" disabled>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PACIENTES_DATA = [
+    {% for p in pacientes.values() %}
+    { id: "{{ p.id }}", name: {{ p.name | tojson }}, prontuario: {{ p.prontuario | tojson }}, cns: {{ p.cns | tojson }}, motherName: {{ p.mother_name | tojson }}, birthDate: {{ p.birth_date | tojson }} },
+    {% endfor %}
+];
+
+const PROCEDIMENTOS_DATA = [
+    {% for p in active_procedimentos %}
+    { id: "{{ p.id }}", label: {{ p.label | tojson }}, code: {{ p.code | tojson }} },
+    {% endfor %}
+];
+
+const PROFISSIONAIS_DATA = [
+    {% for p in active_profissionais %}
+    { id: "{{ p.id }}", name: {{ p.name | tojson }}, cbo: {{ p.cbo | tojson }} },
+    {% endfor %}
+];
+</script>
+<script src="/static/js/registros.js?v=13"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.proc-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+.proc-row .form-group { margin-bottom: 0; }
+.proc-row .proc-select-group { flex: 1 1 auto; min-width: 0; }
+.proc-row .proc-qty-group { flex: 0 0 72px; }
+.proc-row .proc-qty-group input { text-align: center; padding-left: 6px; padding-right: 6px; }
+.proc-row .proc-remove-btn { margin-top: 26px; flex-shrink: 0; }
+.data-table-compact th { padding: 4px 12px; font-size: 10px; }
+.data-table-compact td { padding: 4px 12px; font-size: 12px; }
+.data-table-compact .badge { font-size: 10px; padding: 1px 6px; }
+.data-table-compact .btn-sm { padding: 2px 6px; font-size: 11px; }
+</style>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Excluir Dados — RAAS-CAPS{% endblock %}
+{% block page_title %}Excluir Dados{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🗑️ Excluir Dados</h1>
+    <p>Remova permanentemente categorias de dados do sistema</p>
+</div>
+
+<div class="card" style="border-left:4px solid var(--danger);">
+    <div class="card-body" style="padding:24px;">
+        <div style="background:#fef2f2;border-radius:8px;padding:14px 18px;margin-bottom:20px;border:1px solid #fecaca;">
+            <strong style="color:var(--danger);">⚠️ Atenção:</strong>
+            <span style="color:#991b1b;">Esta operação é irreversível. Recomenda-se gerar um backup antes de prosseguir.</span>
+        </div>
+
+        <p style="font-weight:500;margin-bottom:14px;">Selecione as categorias a excluir:</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+            {% set labels = {'pacientes':'Pacientes','profissionais':'Profissionais','procedimentos':'Procedimentos','registros':'Registros RAAS','registros_mes_atual':'Registros do Mês Atual'} %}
+            {% for key, lbl in labels.items() %}
+            <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+                <input type="checkbox" name="tables" value="{{ key }}" style="width:18px;height:18px;" class="excluir-check">
+                <span style="flex:1;font-weight:500;">{{ lbl }}</span>
+                <span class="badge badge-gray">{{ counts.get(key, 0) }} registro(s)</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="form-group" style="max-width:320px;">
+            <label>Digite <strong>EXCLUIR</strong> para confirmar <span style="color:var(--danger);">*</span></label>
+            <input type="text" id="confirmInput" placeholder="EXCLUIR" autocomplete="off" required>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+            <a href="/backup" class="btn btn-outline">💾 Gerar backup antes</a>
+            <button class="btn btn-danger" onclick="runExcluir()">🗑️ Excluir Selecionados</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function runExcluir() {
+    const sel = document.querySelectorAll('.excluir-check:checked');
+    if (sel.length === 0) {
+        showToast('Selecione ao menos uma categoria.', 'error');
+        return;
+    }
+    if (document.getElementById('confirmInput').value.trim() !== 'EXCLUIR') {
+        showToast('Digite EXCLUIR para confirmar.', 'error');
+        return;
+    }
+    if (!confirm('Confirma a exclusão permanente dos dados selecionados?')) return;
+
+    const tables = Array.from(sel).map(c => c.value);
+    fetch('/api/excluir', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tables: tables, confirm: document.getElementById('confirmInput').value.trim()})
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            showToast(data.mensagem, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.detail || 'Erro ao excluir dados.', 'error');
+        }
+    }).catch(() => showToast('Erro na requisição.', 'error'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Configurações — RAAS-CAPS{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>⚙️ Configurações</h1>
+    <p>Informações do sistema RAAS-CAPS</p>
+</div>
+
+<div>
+    <div class="card">
+        <div class="card-header"><span>Sobre o Sistema</span></div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
+                <div><strong>Sistema:</strong> RAAS-CAPS</div>
+                <div><strong>Versão:</strong> 4.27</div>
+                <div><strong>Padrão:</strong> SIA/SUS — Competência 02/2026</div>
+                <div><strong>Formato:</strong> Registro 01, 15, 16 (DATASUS)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span>Retenção de Competências</span></div>
+        <div class="card-body">
+            <p style="color:var(--muted);font-size:14px;margin-bottom:14px;">
+                O sistema mantém os registros RAAS da <strong>competência atual e das 3 anteriores</strong>.
+                Registros mais antigos são descartados automaticamente ao abrir o sistema.
+            </p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                {% for c in competencias %}
+                <div style="background:{% if c.atual %}var(--primary-light){% else %}var(--secondary-light){% endif %};border:{% if c.atual %}2px solid var(--primary){% else %}1px solid var(--border){% endif %};border-radius:8px;padding:10px 16px;">
+                    <div style="font-size:11px;color:{% if c.atual %}var(--primary){% else %}var(--muted){% endif %};font-weight:700;text-transform:uppercase;">
+                        {% if c.atual %}ATUAL{% else %}{{ c.idx }} mês{{ 'es' if c.idx > 1 }} atrás{% endif %}
+                    </div>
+                    <div style="font-size:14px;font-weight:600;margin-top:2px;">{{ c.label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;">
+        <div style="background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:16px 20px; text-align:center; color:#fff;">
+            <div style="font-size:20px; margin-bottom:2px; line-height:1;">🚀</div>
+            <h2 style="margin:0; font-size:16px; font-weight:800; letter-spacing:.3px;">Equipe Inova Brasil</h2>
+            <p style="margin:5px auto 0; max-width:480px; font-size:12px; line-height:1.4; opacity:.95; font-style:italic;">
+                "Este software foi desenvolvido com o objetivo de auxiliar os digitadores brasileiros do Sistema RAAS, automatizando tarefas e otimizando seu fluxo de trabalho."
+            </p>
+        </div>
+        <div class="card-body">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px;">
+                <div style="border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center;">
+                    <div style="width:40px; height:40px; margin:0 auto 8px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;">JA</div>
+                    <div style="font-weight:700; font-size:13px;">Jânio Albuquerque</div>
+                    <span class="badge badge-blue" style="margin-top:5px; display:inline-block;">Desenvolvedor</span>
+                </div>
+                <div style="border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center;">
+                    <div style="width:40px; height:40px; margin:0 auto 8px; border-radius:50%; background:var(--secondary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;">T</div>
+                    <div style="font-weight:700; font-size:13px;">Torres</div>
+                    <span class="badge badge-blue" style="margin-top:5px; display:inline-block;">Desenvolvedor</span>
+                </div>
+                <div style="border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center;">
+                    <div style="width:40px; height:40px; margin:0 auto 8px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;">LC</div>
+                    <div style="font-weight:700; font-size:13px;">Luiz Carlos dos Santos Guaze</div>
+                    <span class="badge badge-purple" style="margin-top:5px; display:inline-block;">Idealizador/Desenvolvedor</span>
+                    <div style="margin-top:6px; font-size:11px; color:var(--muted);">📷 Instagram: Luiz Carlos fitipil</div>
+                </div>
+                <div style="border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center;">
+                    <div style="width:40px; height:40px; margin:0 auto 8px; border-radius:50%; background:var(--muted); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;">ML</div>
+                    <div style="font-weight:700; font-size:13px;">Max Lobo da Paz</div>
+                    <span class="badge badge-gray" style="margin-top:5px; display:inline-block;">Colaborador/Desenvolvimento</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

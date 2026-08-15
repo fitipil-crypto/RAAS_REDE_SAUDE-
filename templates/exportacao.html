@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Exportação — RAAS-CAPS{% endblock %}
+{% block page_title %}Exportação{% endblock %}
+
+{% block content %}
+<style>
+.hdr-field { display:flex; flex-direction:column; gap:4px; }
+.hdr-field label { font-size:13px; font-weight:500; color:var(--muted); }
+.hdr-field input, .hdr-field select {
+    padding:8px 12px; border:1px solid var(--border); border-radius:6px;
+    font-size:14px; outline:none; background:#fff; width:100%;
+}
+</style>
+<div class="page-header">
+    <div>
+        <h1>📤 Exportação RAAS</h1>
+        <p>Gerar arquivos no formato DATASUS</p>
+    </div>
+    <div class="month-selector">
+        <label>Competência:</label>
+        <input type="month" id="monthPicker" value="{{ sel_month }}" onchange="changeMonth()">
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value">{{ stats.total_registros }}</div>
+        <div class="stat-label">Registros</div>
+    </div>
+    <div class="stat-card stat-secondary">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value">{{ stats.total_pacientes }}</div>
+        <div class="stat-label">Pacientes</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-icon">👨‍⚕️</div>
+        <div class="stat-value">{{ stats.total_profissionais }}</div>
+        <div class="stat-label">Profissionais</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">{{ stats.total_procedimentos }}</div>
+        <div class="stat-label">Procedimentos</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <h2 style="margin:0;">Cabeçalho do Arquivo (Registro 01)</h2>
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="btn btn-outline" onclick="restaurarCabecalho()" style="padding:6px 12px;font-size:13px;">↺ Restaurar</button>
+                {% if user.role == 'admin' %}
+                <button type="button" class="btn btn-primary" onclick="salvarCabecalho()" style="padding:6px 14px;font-size:13px;">💾 Salvar como padrão</button>
+                {% endif %}
+            </div>
+        </div>
+        <p style="color:var(--muted);margin-bottom:18px;">Dados gravados no cabeçalho do arquivo de exportação. "Salvar como padrão" guarda os valores para as próximas exportações.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+            <div class="hdr-field">
+                <label>Código UF</label>
+                <input type="text" id="h_uf_code" value="{{ config.uf_code or '35' }}" placeholder="35">
+            </div>
+            <div class="hdr-field">
+                <label>Código CNES</label>
+                <input type="text" id="h_cnes_code" value="{{ config.cnes_code or '0000000' }}" placeholder="7 dígitos">
+            </div>
+            <div class="hdr-field">
+                <label>CNPJ</label>
+                <input type="text" id="h_cnpj" value="{{ config.cnpj or '' }}" placeholder="14 dígitos">
+            </div>
+            <div class="hdr-field" style="grid-column:1 / 3;">
+                <label>Nome do Órgão</label>
+                <input type="text" id="h_organ_name" value="{{ config.organ_name or 'CAPS MUNICIPAL' }}" placeholder="Nome do estabelecimento">
+            </div>
+            <div class="hdr-field">
+                <label>Sigla</label>
+                <input type="text" id="h_organ_code" value="{{ config.organ_code or 'CAPS01' }}" placeholder="CAPSi">
+            </div>
+            <div class="hdr-field" style="grid-column:1 / 3;">
+                <label>Órgão de Destino</label>
+                <input type="text" id="h_destination_organ" value="{{ config.destination_organ or 'SECRETARIA MUNICIPAL DE SAUDE' }}" placeholder="Secretaria Municipal de Saúde">
+            </div>
+            <div class="hdr-field">
+                <label>Destino</label>
+                <select id="h_destination_indicator">
+                    <option value="M" {% if config.destination_indicator != 'E' %}selected{% endif %}>Municipal</option>
+                    <option value="E" {% if config.destination_indicator == 'E' %}selected{% endif %}>Estadual</option>
+                </select>
+            </div>
+            <div class="hdr-field">
+                <label>Versão</label>
+                <input type="text" id="h_versao" value="{{ config.versao or '02.31' }}" placeholder="02.31">
+            </div>
+            <div class="hdr-field">
+                <label>Versão BDSIA</label>
+                <input type="text" id="h_bdversao" value="{{ config.bdversao or '' }}" placeholder="Automático">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <h2>Arquivo RAAS (DATASUS)</h2>
+        <p style="color:var(--muted);">Gera arquivo <code>.txt</code> no formato oficial com Registro 01, 15 e 16.</p>
+        <div style="background:var(--muted-bg);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;">
+            📄 Padrão DATASUS: <strong>AA</strong> + sufixo (até 6 caracteres)
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
+            <div>
+                <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px;">Sufixo do arquivo:</label>
+                <input type="text" id="fileSuffix" value="CAPSI1" maxlength="6" placeholder="CAPSI1"
+                       style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;width:160px;">
+            </div>
+        </div>
+        {% if user.role == 'admin' %}
+        <button class="btn btn-primary btn-lg" onclick="downloadRAAS()">⬇️ Baixar RAAS (.txt)</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding:28px;">
+        <h2>Exportar CSV</h2>
+        <p style="color:var(--muted);">Gera arquivo <code>.csv</code> para análise em planilhas.</p>
+        <div style="background:var(--muted-bg);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;">
+            📄 Arquivo: <strong>RAAS_{{ sel_month }}.csv</strong>
+        </div>
+        {% if user.role == 'admin' %}
+        <button class="btn btn-outline btn-lg" onclick="downloadCSV()">⬇️ Baixar CSV</button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const HDR_FIELDS = ["uf_code","cnes_code","cnpj","organ_name","organ_code",
+    "destination_organ","destination_indicator","versao","bdversao"];
+
+const HDR_DEFAULTS = {
+    uf_code: "{{ config.uf_code or '35' }}",
+    cnes_code: "{{ config.cnes_code or '0000000' }}",
+    cnpj: "{{ config.cnpj or '' }}",
+    organ_name: "{{ config.organ_name or 'CAPS MUNICIPAL' }}",
+    organ_code: "{{ config.organ_code or 'CAPS01' }}",
+    destination_organ: "{{ config.destination_organ or 'SECRETARIA MUNICIPAL DE SAUDE' }}",
+    destination_indicator: "{{ config.destination_indicator or 'M' }}",
+    versao: "{{ config.versao or '02.31' }}",
+    bdversao: "{{ config.bdversao or '' }}"
+};
+
+function coletarCabecalho() {
+    const dados = {};
+    HDR_FIELDS.forEach(f => {
+        const el = document.getElementById('h_' + f);
+        if (el) dados[f] = el.value;
+    });
+    return dados;
+}
+
+function changeMonth() {
+    const m = document.getElementById('monthPicker').value;
+    window.location.href = '/exportacao?month=' + m;
+}
+
+function downloadRAAS() {
+    const m = document.getElementById('monthPicker').value;
+    const s = document.getElementById('fileSuffix').value || 'CAPSI1';
+    const params = new URLSearchParams({ month: m, suffix: s, ...coletarCabecalho() });
+    window.location.href = '/api/exportacao/raas?' + params.toString();
+}
+
+function downloadCSV() {
+    const m = document.getElementById('monthPicker').value;
+    window.location.href = '/api/exportacao/csv?month=' + m;
+}
+
+function restaurarCabecalho() {
+    HDR_FIELDS.forEach(f => {
+        const el = document.getElementById('h_' + f);
+        if (el) el.value = HDR_DEFAULTS[f];
+    });
+}
+
+async function salvarCabecalho() {
+    try {
+        const r = await fetch('/api/exportacao/cabecalho/salvar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(coletarCabecalho())
+        });
+        if (r.ok) {
+            alert('Dados do cabeçalho salvos como padrão.');
+        } else {
+            alert('Erro ao salvar o cabeçalho.');
+        }
+    } catch (e) {
+        alert('Erro de conexão ao salvar.');
+    }
+}
+</script>
+{% endblock %}
